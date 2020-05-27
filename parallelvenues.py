@@ -10,35 +10,41 @@ with open("./params.json", "r") as f:
     params = json.load(f)
 
 def GetVenuesForCoord(nbh_name, latitude, longitude, radius, limit):
-    CLIENT_ID = params['API_PARAMS']['CLIENT_ID']
-    CLIENT_SECRET = params['API_PARAMS']['CLIENT_SECRET']
-    VERSION = params['API_PARAMS']['VERSION']
+    CLIENT_ID = params['api']['client_id']
+    CLIENT_SECRET = params['api']['client_secret']
+    VERSION = params['api']['version']
+    CATEGORIES = ','.join([c['id'] for c in params['api']['categories']])
     
-    url = 'https://api.foursquare.com/v2/venues/explore?client_id={}&client_secret={}&ll={},{}&v={}&radius={}&limit={}'.format(
+    url = 'https://api.foursquare.com/v2/venues/search?client_id={}&client_secret={}&ll={},{}&v={}&intent=browse&categoryId={}&radius={}&limit={}'.format(
             CLIENT_ID,
             CLIENT_SECRET,
             latitude,
             longitude,
             VERSION,
+            CATEGORIES,
             radius,
             limit)
 
     try:
         req = requests.get(url).json()
-        response = req['response']['groups'][0]['items']
+    except Exception as e:
+        return [(nbh_name, str(e), 'quota_exceeded', latitude, longitude, 'error')]
+    
+    try:
+        venues = req['response']['venues']
     except:
-        return [(nbh_name, 'NA', 'quota_exceeded', latitude, longitude, 'error')]
+        return [(nbh_name, req, 'error', latitude, longitude, 'error')]
 
-    venues = [(
+    venue_list = [(
         nbh_name,
-        r['venue']['id'],
-        r['venue']['name'],
-        r['venue']['location']['lat'],
-        r['venue']['location']['lng'],
-        r['venue']['categories'][0]['name']
-    ) for r in response]
+        v['id'],
+        v['name'],
+        v['location']['lat'],
+        v['location']['lng'],
+        v['categories'][0]['name']
+    ) for v in venues]
 
-    return venues
+    return venue_list
 
 def GetVenuesForNbh(nbh_name, latitudes, longitudes, radius, max_threads, limit=100):
     start = time.time()
