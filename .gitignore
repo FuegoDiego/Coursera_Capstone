@@ -3,5 +3,6 @@
 traffic_coordinates.json
 neighbourhood_pedestrian_vol.json
 myoutputfile.txt
-params.txt
 _map.html
+venues_toronto.geojson
+params.json

@@ -5,6 +5,8 @@ import concurrent.futures as cf
 import time
 import itertools
 import pandas as pd
+import geopandas
+from shapely.geometry import Point
 
 with open("./params.json", "r") as f:
     params = json.load(f)
@@ -28,19 +30,18 @@ def GetVenuesForCoord(nbh_name, latitude, longitude, radius, limit):
     try:
         req = requests.get(url).json()
     except Exception as e:
-        return [(nbh_name, str(e), 'quota_exceeded', latitude, longitude, 'error')]
+        return [(nbh_name, str(e), 'quota_exceeded', np.nan, 'error')]
     
     try:
         venues = req['response']['venues']
     except:
-        return [(nbh_name, req, 'error', latitude, longitude, 'error')]
+        return [(nbh_name, req, 'error', np.nan, 'error')]
 
     venue_list = [(
         nbh_name,
         v['id'],
         v['name'],
-        v['location']['lat'],
-        v['location']['lng'],
+        Point(v['location']['lng'], v['location']['lat']),
         v['categories'][0]['name']
     ) for v in venues]
 
@@ -65,13 +66,12 @@ def GetVenuesForNbh(nbh_name, latitudes, longitudes, radius, max_threads, limit=
     with cf.ThreadPoolExecutor(max_workers=max_threads) as pool:
         venue_lst = list(pool.map(GetVenuesForCoord, nbh_names, lats, lngs, radii, limits))
         
-    venues_df = pd.DataFrame([item for venue_lst in venue_lst for item in venue_lst])
+    venues_df = geopandas.GeoDataFrame([item for venue_lst in venue_lst for item in venue_lst])
 
     venues_df.columns = ['Neighbourhood',
                          'Venue ID',
                          'Venue', 
-                         'Venue Latitude', 
-                         'Venue Longitude', 
+                         'geometry', 
                          'Venue Category']
     
     end = time.time()
